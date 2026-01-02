@@ -14,7 +14,7 @@ Uses:
 ## User-facing apps
 
 - Nextcloud (bastion-nextcloud): personal file cloud + apps
-- Vaultwarden (bastion-vaultwarden): password manager with DOMAIN=https://pass.bastionreda.online
+- Vaultwarden (bastion-vaultwarden): password manager
 - FreshRSS: RSS reader (in nginx configs + compose, snippet truncated)
 - n8n (bastion-n8n): automation/“glue” engine, already mounted to scripts, backups and Nextcloud data; clearly intended as internal automation backbone. 
 
@@ -47,6 +47,4 @@ Uses:
 - scripts/backup.sh orchestrates backups.
 - backup.log shows the flow: stop containers, archive:
 - then restart containers, upload archive to Backblaze B2, prune local backups (keep last 2). 
-automated offsite backups to Backblaze B2
-
-This is already “product level” from a homelab perspective.
+- automated offsite backups to Backblaze B2
