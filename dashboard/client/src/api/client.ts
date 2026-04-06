@@ -79,7 +79,8 @@ export interface BackupStatus {
 export interface AutomationJob {
   name: string
   schedule: string
-  lastRun: string | null
-  nextRun: string
+  description: string
+  mechanism: string
   status: 'ok' | 'warning' | 'unknown'
+  warning?: string
 }
