@@ -11,6 +11,6 @@ export async function authHook(request: FastifyRequest, reply: FastifyReply) {
     : queryToken
 
   if (!token || token !== config.authToken) {
-    reply.status(401).send({ error: 'Unauthorized' })
+    return reply.status(401).send({ error: 'Unauthorized' })
   }
 }

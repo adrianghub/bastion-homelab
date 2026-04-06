@@ -21,7 +21,8 @@ const app = Fastify({
 })
 
 await app.register(cors, {
-  origin: config.nodeEnv === 'development' ? true : false,
+  origin: config.nodeEnv === 'development' ? true : 'https://dash.bastionreda.online',
+  credentials: true,
 })
 
 // API routes

@@ -10,15 +10,23 @@ export async function containersRoutes(app: FastifyInstance) {
     return reply.send(containers)
   })
 
+  const validActions = ['start', 'stop', 'restart'] as const
+  type ContainerAction = (typeof validActions)[number]
+
   app.post<{ Params: { id: string; action: string } }>(
     '/api/containers/:id/:action',
     async (req, reply) => {
       const { id, action } = req.params
-      if (!['start', 'stop', 'restart'].includes(action)) {
+      if (!(validActions as readonly string[]).includes(action)) {
         return reply.status(400).send({ error: 'Invalid action' })
       }
-      await containerAction(id, action as 'start' | 'stop' | 'restart')
-      return reply.send({ ok: true })
+      try {
+        await containerAction(id, action as ContainerAction)
+        return reply.send({ ok: true })
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Docker operation failed'
+        return reply.status(500).send({ error: message })
+      }
     }
   )
 }
