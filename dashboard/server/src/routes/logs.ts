@@ -49,13 +49,13 @@ export async function logsRoutes(app: FastifyInstance) {
 
         if (follow === 'true') {
           // Tail the file using a read stream from the end — simplified polling
-          let offset = Buffer.byteLength(content)
+          let offset = content.length
           const interval = setInterval(async () => {
             try {
               const full = await readFile(filePath, 'utf8')
               const newContent = full.slice(offset)
               if (newContent) {
-                offset = Buffer.byteLength(full)
+                offset = full.length
                 newContent.split('\n').filter(Boolean).forEach(send)
               }
             } catch {
