@@ -197,31 +197,46 @@ Key notes:
 
 Triggers on push to `dev`, `feature/**`, `fix/**` and on PRs to `main`.
 
-| Job | Steps |
-|---|---|
-| Typecheck & Test | `npm ci` → `npm run typecheck` → `npm test` |
-| Docker build | `docker build ./dashboard` (only runs if tests pass; uses GHA layer cache) |
+| Job | Steps | Runs on |
+|---|---|---|
+| Typecheck & Test | `npm ci` → `npm run typecheck` → `npm test` | `ubuntu-latest` |
+| Docker build | `docker build ./dashboard` (only if tests pass; uses GHA layer cache) | `ubuntu-latest` |
+| **Deploy to Pi** | `git pull origin main` → `docker compose up -d --build bastion-dashboard` | `self-hosted` (Pi) |
 
-### n8n Continuous Deployment (planned)
+The `deploy` job only runs on **push to `main`** (not on PRs). It depends on both CI jobs passing first.
 
-**Goal:** auto-deploy the dashboard to the Pi when a commit is merged to `main`, replacing manual SSH.
+The Pi connects **outbound** to GitHub Actions as a self-hosted runner — no open ports or SSH keys required. Works transparently with the Cloudflare Tunnel setup.
 
-**Split:** GitHub Actions = CI (cloud, validates code); n8n = CD (on-Pi, deploys).
+### Self-hosted runner setup (one-time, on Pi)
 
-**One-time Pi setup:**
 ```bash
-# 1. Clone repo on Pi
-cd ~ && git clone git@github.com:adrianghub/bastion-homelab.git
+# 1. Create runner directory
+mkdir -p ~/actions-runner && cd ~/actions-runner
 
-# 2. Add git to n8n-custom — edit ~/docker-hub/n8n-custom/Dockerfile:
-#    USER root
-#    RUN apk add --no-cache git
-#    USER node
-#    Then: make rebuild-n8n
+# 2. Download the ARM64 runner (check https://github.com/actions/runner/releases for latest)
+curl -Lo runner.tar.gz https://github.com/actions/runner/releases/download/v2.323.0/actions-runner-linux-arm64-2.323.0.tar.gz
+tar xzf runner.tar.gz
 
-# 3. Mount repo into n8n in docker-compose.yml (n8n service volumes):
-#    - /home/adrianzinko/bastion-homelab:/home/node/bastion-homelab
+# 3. Get a registration token:
+#    GitHub repo → Settings → Actions → Runners → New self-hosted runner
+#    Copy the token from the config command shown
+
+# 4. Configure (replace TOKEN with the token from step 3)
+./config.sh --url https://github.com/adrianghub/bastion-homelab --token TOKEN --name bastion-pi --labels self-hosted,Linux,ARM64 --unattended
+
+# 5. Install and start as a systemd service
+sudo ./svc.sh install
+sudo ./svc.sh start
+
+# Verify
+sudo ./svc.sh status
 ```
+
+The runner token expires after 1 hour — generate it right before running `config.sh`.
+
+### n8n Continuous Deployment (deferred)
+
+Deferred in favour of the self-hosted runner approach above. The n8n CD design is documented in the plan file for future reference if the runner approach is ever replaced.
 
 **n8n workflow nodes:**
 1. **Webhook** — `POST /webhook/github-deploy`
