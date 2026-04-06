@@ -30,6 +30,123 @@ SSH access: `ssh adrianzinko@bastion.local`. Ops shortcuts: `make help` from `~/
 | bastion-watchtower | registry | — | auto-updates at 04:00 |
 | bastion-certbot | registry | — | cert renewal |
 | nc_app_flow | registry nextcloud/flow | — | Nextcloud AI assistant |
+| bastion-dashboard | **custom build** | dash.bastionreda.online | homelab web UI (this repo) |
+
+## Dashboard (`dashboard/`)
+
+Web UI for managing the homelab — replaces day-to-day SSH operations. Source lives in this repo; deployed as a single Docker container at `dash.bastionreda.online`.
+
+### Stack
+- **Frontend**: Vite + React 19 + TypeScript + Tailwind CSS v4
+- **Backend**: Fastify + TypeScript + dockerode + systeminformation
+- **Auth**: Bearer token (`DASHBOARD_AUTH_TOKEN` in `.env`), stored in localStorage
+- **Real-time**: polling every 5s for stats/containers; SSE for log streaming
+
+### Structure
+```
+dashboard/
+├── client/src/
+│   ├── api/client.ts          # fetch wrapper, auth header injection, shared types
+│   ├── hooks/usePolling.ts    # generic interval hook
+│   ├── hooks/useSSE.ts        # SSE hook — passes token as ?token= query param
+│   ├── components/
+│   │   ├── Layout.tsx         # sidebar nav
+│   │   ├── ServiceCard.tsx    # container card with start/stop/restart + SERVICE_URLS map
+│   │   ├── SystemGauge.tsx    # CPU/RAM/disk/temp bars
+│   │   └── ConfirmDialog.tsx  # Escape-dismissable inline confirm modal
+│   └── pages/
+│       ├── DashboardPage.tsx  # service grid + system overview (Phase 1 ✓)
+│       ├── LogsPage.tsx       # SSE log streaming, container + file sources (Phase 2)
+│       ├── BackupPage.tsx     # backup status + known issues (Phase 3)
+│       ├── ActionsPage.tsx    # whitelisted quick actions (Phase 3)
+│       └── AutomationPage.tsx # scheduled jobs timeline (Phase 4)
+├── server/src/
+│   ├── auth.ts                # Bearer + ?token= query param check
+│   ├── config.ts              # env vars; exits if DASHBOARD_AUTH_TOKEN unset
+│   ├── routes/
+│   │   ├── containers.ts      # GET /api/containers, POST /api/containers/:id/:action
+│   │   ├── system.ts          # GET /api/system
+│   │   ├── logs.ts            # GET /api/logs/:source (SSE)
+│   │   ├── backup.ts          # GET /api/backup/status
+│   │   ├── automation.ts      # GET /api/automation (hardcoded schedule + warnings)
+│   │   └── actions.ts         # POST /api/actions/:name (strict whitelist)
+│   └── services/
+│       ├── docker.ts          # dockerode wrapper
+│       └── system.ts          # systeminformation wrapper
+├── Dockerfile                 # multi-stage build (client → server → runtime)
+├── package.json               # npm workspaces root
+└── .env.example
+```
+
+### Build & Dev Commands
+```bash
+# Install all dependencies (run from dashboard/)
+npm install --workspaces
+
+# Type-check everything
+npm run typecheck             # runs both workspaces
+
+# Build for production
+npm run build                 # builds client then server
+
+# Dev: run Vite locally proxying to Pi
+cd dashboard/client && npm run dev
+# Proxy: /api → http://bastion.local:3000 (set in vite.config.ts)
+
+# Dev: run server locally (needs DASHBOARD_AUTH_TOKEN set)
+cd dashboard/server && npm run dev
+
+# Production build check
+docker build -t bastion-dashboard ./dashboard
+```
+
+### docker-compose.yml Addition
+```yaml
+bastion-dashboard:
+  build:
+    context: ./dashboard
+  container_name: bastion-dashboard
+  restart: unless-stopped
+  pid: "host"                   # required — systeminformation reads host /proc via pid namespace
+  networks:
+    - bastion-net
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - /home/adrianzinko/docker-hub:/docker-hub:ro
+    - /home/adrianzinko/scripts:/scripts:ro
+    - /var/log/bastion-backup.log:/logs/backup.log:ro
+    - /home/adrianzinko/docker-hub/auto-rebuild.log:/logs/auto-rebuild.log:ro
+  env_file: .env                # must contain DASHBOARD_AUTH_TOKEN
+  labels:
+    - "com.centurylinklabs.watchtower.enable=false"
+```
+
+> **Note**: `pid: "host"` is required. Without it, `systeminformation` reads namespaced container stats, not the host. Do not replace it with `/proc` volume mounts — that does not work for this library.
+
+### nginx Vhost
+Standard pattern (HTTP redirect + HTTPS proxy). Dashboard is served on port 3000 — Fastify handles both static files and `/api/*` on the same port. No WebSocket needed (polling + SSE only).
+
+### Action Whitelist
+`server/src/routes/actions.ts` contains a strict name→command map. No user input is interpolated. Adding a new action: add the key/command to the `ACTIONS` record only — never accept arbitrary commands from the client.
+
+### API Endpoints
+```
+GET  /api/containers                   → ContainerInfo[]
+POST /api/containers/:id/start|stop|restart → { ok: true }
+GET  /api/system                       → { cpu, mem, disk, temp }
+GET  /api/logs/:source?lines=&follow=  → SSE stream
+GET  /api/backup/status                → { lastRun, success, issues[] }
+GET  /api/automation                   → AutomationJob[]
+GET  /api/actions                      → string[] (whitelisted names)
+POST /api/actions/:name                → { ok, output }
+```
+
+### Implementation Status
+- **Phase 1** ✓ — Dashboard (service grid + system overview), Login, Layout, all components
+- **Phase 2** — Logs viewer (SSE streaming, container + file sources, search/filter)
+- **Phase 3** — Backup status page + Actions page
+- **Phase 4** — Automation timeline
+- **Phase 5** — Deploy to Pi (docker-compose, nginx, Cloudflare hostname)
 
 ## Custom-Built Images
 
@@ -75,6 +192,20 @@ Secrets for backups: age encryption; recipients at `~/.config/age/recipients.txt
 | Sun 05:00 | Docker prune | crontab — **see Known Issues** |
 
 ## Common Workflows
+
+**Develop the dashboard locally:**
+```bash
+cd ~/Dev/bastion-homelab/dashboard
+npm install --workspaces
+cd client && npm run dev   # Vite on :5173, /api proxied to bastion.local:3000
+```
+
+**Deploy dashboard to Pi (Phase 5):**
+1. Add `bastion-dashboard` block to `~/docker-hub/docker-compose.yml` (see Dashboard section above)
+2. Create `nginx/conf.d/dashboard.conf` following standard vhost pattern → port 3000
+3. Add `DASHBOARD_AUTH_TOKEN` to `~/docker-hub/.env`
+4. Add `dash.bastionreda.online` hostname in Cloudflare Zero Trust dashboard
+5. `docker compose up -d bastion-dashboard && docker compose exec proxy nginx -s reload`
 
 **Add a new service:**
 1. Add service block to `docker-compose.yml` — include `networks: [bastion-net]` and `com.centurylinklabs.watchtower.enable=true` label
