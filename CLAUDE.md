@@ -86,6 +86,11 @@ npm install --workspaces
 # Type-check everything
 npm run typecheck             # runs both workspaces
 
+# Run tests
+npm test                      # run all tests once (CI mode)
+npm run test:watch -w client  # watch mode for client
+npm run test:watch -w server  # watch mode for server
+
 # Build for production
 npm run build                 # builds client then server
 
@@ -143,10 +148,105 @@ POST /api/actions/:name                → { ok, output }
 
 ### Implementation Status
 - **Phase 1** ✓ — Dashboard (service grid + system overview), Login, Layout, all components
-- **Phase 2** — Logs viewer (SSE streaming, container + file sources, search/filter)
-- **Phase 3** — Backup status page + Actions page
-- **Phase 4** — Automation timeline
+- **Phase 2** ✓ — Logs viewer (SSE streaming, container + file sources, pause/resume)
+- **Phase 3** ✓ — Backup status page + Actions page (whitelist + confirm dialogs)
+- **Phase 4** ✓ — Automation timeline (6 jobs, amber warnings)
+- **Tests** ✓ — 30 Vitest tests across 5 files (auth, routes, hooks, API client)
+- **CI** ✓ — GitHub Actions: typecheck + test + Docker build on every PR to main
 - **Phase 5** — Deploy to Pi (docker-compose, nginx, Cloudflare hostname)
+- **n8n CD** — Auto-deploy on push to main via n8n webhook workflow (planned)
+
+## Gitflow & Development
+
+- **`main`** — production-ready; protected; changes only via PR
+- **`dev`** — working branch; all feature branches cut from here
+- **Feature branches** — `feature/<name>` or `fix/<name>` off `dev`, PR back to `dev`
+- **Releases** — PR `dev` → `main`; CI must pass before merge
+
+```bash
+# Start new work
+git checkout dev && git pull
+git checkout -b feature/my-thing
+
+# Push and open PR to dev
+git push -u origin feature/my-thing
+```
+
+## Testing
+
+Vitest test suite — 30 tests, all in `dashboard/`:
+
+| File | Coverage |
+|---|---|
+| `server/src/__tests__/auth.test.ts` | Missing/wrong/valid Bearer token; valid `?token=` query param |
+| `server/src/__tests__/containers.route.test.ts` | Auth gate, container list, start/stop/restart dispatch, bad action (400), Docker error (500) |
+| `server/src/__tests__/actions.route.test.ts` | Auth gate, whitelist GET, unknown action (400) |
+| `client/src/__tests__/client.test.ts` | Token get/set/clear, isAuthenticated, Bearer header injection, 401 handling |
+| `client/src/__tests__/usePolling.test.ts` | Initial state, data/error, interval cadence, enabled flag, refresh(), unmount cleanup |
+
+Key notes:
+- Server config reads `DASHBOARD_AUTH_TOKEN` at module load — test env sets it to `test-token` via `vitest.config.ts`
+- Route tests use Fastify's `app.inject()` — no real HTTP server needed
+- Docker service is mocked in route tests via `vi.mock('../services/docker.js', ...)`
+
+## CI/CD
+
+### GitHub Actions (CI)
+
+**File:** `.github/workflows/ci.yml`
+
+Triggers on push to `dev`, `feature/**`, `fix/**` and on PRs to `main`.
+
+| Job | Steps | Runs on |
+|---|---|---|
+| Typecheck & Test | `npm ci` → `npm run typecheck` → `npm test` | `ubuntu-latest` |
+| Docker build | `docker build ./dashboard` (only if tests pass; uses GHA layer cache) | `ubuntu-latest` |
+| **Deploy to Pi** | `git pull origin main` → `docker compose up -d --build bastion-dashboard` | `self-hosted` (Pi) |
+
+The `deploy` job only runs on **push to `main`** (not on PRs). It depends on both CI jobs passing first.
+
+The Pi connects **outbound** to GitHub Actions as a self-hosted runner — no open ports or SSH keys required. Works transparently with the Cloudflare Tunnel setup.
+
+### Self-hosted runner setup (one-time, on Pi)
+
+```bash
+# 1. Create runner directory
+mkdir -p ~/actions-runner && cd ~/actions-runner
+
+# 2. Download the ARM64 runner (check https://github.com/actions/runner/releases for latest)
+curl -Lo runner.tar.gz https://github.com/actions/runner/releases/download/v2.323.0/actions-runner-linux-arm64-2.323.0.tar.gz
+tar xzf runner.tar.gz
+
+# 3. Get a registration token:
+#    GitHub repo → Settings → Actions → Runners → New self-hosted runner
+#    Copy the token from the config command shown
+
+# 4. Configure (replace TOKEN with the token from step 3)
+./config.sh --url https://github.com/adrianghub/bastion-homelab --token TOKEN --name bastion-pi --labels self-hosted,Linux,ARM64 --unattended
+
+# 5. Install and start as a systemd service
+sudo ./svc.sh install
+sudo ./svc.sh start
+
+# Verify
+sudo ./svc.sh status
+```
+
+The runner token expires after 1 hour — generate it right before running `config.sh`.
+
+### n8n Continuous Deployment (deferred)
+
+Deferred in favour of the self-hosted runner approach above. The n8n CD design is documented in the plan file for future reference if the runner approach is ever replaced.
+
+**n8n workflow nodes:**
+1. **Webhook** — `POST /webhook/github-deploy`
+2. **IF** — `{{ $json.ref === 'refs/heads/main' }}` — main branch only
+3. **HMAC verify** — compare `X-Hub-Signature-256` header to prevent spoofed triggers
+4. **Execute Command** — `git -C /home/node/bastion-homelab pull origin main`
+5. **Execute Command** — `docker compose -f /docker-hub/docker-compose.yml up -d --build bastion-dashboard`
+6. **HTTP Request** (optional) — Discord/Slack notification with deploy status
+
+**GitHub webhook:** Repo → Settings → Webhooks → `https://n8n.bastionreda.online/webhook/github-deploy`, push events only.
 
 ## Custom-Built Images
 
@@ -200,12 +300,14 @@ npm install --workspaces
 cd client && npm run dev   # Vite on :5173, /api proxied to bastion.local:3000
 ```
 
-**Deploy dashboard to Pi (Phase 5):**
-1. Add `bastion-dashboard` block to `~/docker-hub/docker-compose.yml` (see Dashboard section above)
-2. Create `nginx/conf.d/dashboard.conf` following standard vhost pattern → port 3000
-3. Add `DASHBOARD_AUTH_TOKEN` to `~/docker-hub/.env`
-4. Add `dash.bastionreda.online` hostname in Cloudflare Zero Trust dashboard
-5. `docker compose up -d bastion-dashboard && docker compose exec proxy nginx -s reload`
+**Deploy dashboard to Pi (Phase 5 — one-time bootstrap):**
+1. Clone repo on Pi: `cd ~ && git clone git@github.com:adrianghub/bastion-homelab.git`
+2. Add `bastion-dashboard` block to `~/docker-hub/docker-compose.yml` (see Dashboard section above)
+3. Create `nginx/conf.d/dashboard.conf` following standard vhost pattern → port 3000
+4. Add `DASHBOARD_AUTH_TOKEN` to `~/docker-hub/.env`
+5. Add `dash.bastionreda.online` hostname in Cloudflare Zero Trust dashboard
+6. `docker compose up -d --build bastion-dashboard && docker compose exec bastion-proxy nginx -s reload`
+7. After n8n CD is set up, subsequent deploys happen automatically on push to `main`
 
 **Add a new service:**
 1. Add service block to `docker-compose.yml` — include `networks: [bastion-net]` and `com.centurylinklabs.watchtower.enable=true` label

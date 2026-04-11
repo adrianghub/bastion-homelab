@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [dev, 'feature/**', 'fix/**']
+    branches: [main, dev, 'feature/**', 'fix/**']
   pull_request:
     branches: [main]
 
@@ -52,3 +52,18 @@ jobs:
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to Pi
+    runs-on: self-hosted
+    needs: [typecheck-and-test, docker-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Pull latest main
+        run: git -C "$HOME/bastion-homelab" pull origin main
+
+      - name: Rebuild and restart dashboard
+        run: |
+          cd "$HOME/docker-hub"
+          docker compose up -d --build bastion-dashboard

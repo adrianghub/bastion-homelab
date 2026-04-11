@@ -13,6 +13,7 @@ const ACTIONS: Record<string, string> = {
   'rebuild-htop-web': '/docker-hub/auto-rebuild-custom.sh',
   'nextcloud-update': '/scripts/nextcloud-upgrade.sh',
   'docker-prune': 'docker system prune -a -f',
+  'nextcloud-scan-blog': 'docker exec bastion-nextcloud php occ files:scan bastion-cloud --path=/bastion-cloud/files/Blog',
 }
 
 export async function actionsRoutes(app: FastifyInstance) {
