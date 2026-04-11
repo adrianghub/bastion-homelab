@@ -74,7 +74,7 @@
       "alwaysOutputData": true,
       "credentials": {
         "httpHeaderAuth": {
-          "id": "VMhL3xR7XtpHsaTK",
+          "id": "<CRED_FRESHRSS_API>",
           "name": "FreshRSS API Auth"
         }
       }
@@ -135,7 +135,7 @@
       "name": "HTTP Request1",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "VMhL3xR7XtpHsaTK",
+          "id": "<CRED_FRESHRSS_API>",
           "name": "FreshRSS API Auth"
         }
       }
@@ -182,7 +182,7 @@
       "name": "Message a model",
       "credentials": {
         "googlePalmApi": {
-          "id": "KX1kCoQjtGtFHtAh",
+          "id": "<CRED_GEMINI_API>",
           "name": "Google Gemini(PaLM) Api account"
         }
       }
@@ -350,7 +350,7 @@
       "name": "HTTP Request: Unstar",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "VMhL3xR7XtpHsaTK",
+          "id": "<CRED_FRESHRSS_API>",
           "name": "FreshRSS API Auth"
         }
       }
@@ -596,10 +596,10 @@
     "executionOrder": "v1",
     "binaryMode": "default"
   },
-  "versionId": "b555b9a0-061f-483f-a020-a08fe4daff76",
+  "versionId": "<WORKFLOW_VERSION_ID>",
   "meta": {
-    "instanceId": "200ef92606ce90f89778f2e9c87173a5a3a45318f93f7bfe47e242478722cbcf"
+    "instanceId": "<N8N_INSTANCE_ID>"
   },
-  "id": "q4gOU804AK2q3mGD",
+  "id": "<WORKFLOW_ID>",
   "tags": []
 }

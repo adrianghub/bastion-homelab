@@ -170,10 +170,10 @@
       ],
       "id": "f1f4afc5-414b-4f31-845d-1326197fac4f",
       "name": "Create a file",
-      "webhookId": "d6d69821-f917-407e-9b6a-bd3f49af39d3",
+      "webhookId": "<NODE_WEBHOOK_ID>",
       "credentials": {
         "githubApi": {
-          "id": "obAPDoTHSNYLJppW",
+          "id": "<CRED_GITHUB_API>",
           "name": "GitHub account"
         }
       }
@@ -212,10 +212,10 @@
       ],
       "id": "355160f5-fe29-4612-97ee-7aa84e8a735c",
       "name": "Delete a file",
-      "webhookId": "afb86674-3ae3-4673-a4d3-c50229d9cd81",
+      "webhookId": "<NODE_WEBHOOK_ID>",
       "credentials": {
         "githubApi": {
-          "id": "obAPDoTHSNYLJppW",
+          "id": "<CRED_GITHUB_API>",
           "name": "GitHub account"
         }
       }
@@ -252,10 +252,10 @@
       ],
       "id": "00a346aa-ce9e-4a47-b5b0-e2fda32f4362",
       "name": "Get a file",
-      "webhookId": "ef6c2398-c1f7-4724-be7f-9d00c5dc2d4b",
+      "webhookId": "<NODE_WEBHOOK_ID>",
       "credentials": {
         "githubApi": {
-          "id": "obAPDoTHSNYLJppW",
+          "id": "<CRED_GITHUB_API>",
           "name": "GitHub account"
         }
       }
@@ -325,10 +325,10 @@
       ],
       "id": "e2b39517-2596-4cab-bbe5-611e8314e5c6",
       "name": "Edit a file",
-      "webhookId": "c61049b7-2bda-4810-a2e9-2328555e13f5",
+      "webhookId": "<NODE_WEBHOOK_ID>",
       "credentials": {
         "githubApi": {
-          "id": "obAPDoTHSNYLJppW",
+          "id": "<CRED_GITHUB_API>",
           "name": "GitHub account"
         }
       }
@@ -349,7 +349,7 @@
       "name": "Delete a file1",
       "credentials": {
         "nextCloudOAuth2Api": {
-          "id": "oBDZHeY8geUVsTwJ",
+          "id": "<CRED_NEXTCLOUD_OAUTH2>",
           "name": "NextCloud account"
         }
       }
@@ -442,11 +442,11 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "18f8052b-b3a6-4dfe-a15f-57401ffc883a",
+  "versionId": "<WORKFLOW_VERSION_ID>",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "200ef92606ce90f89778f2e9c87173a5a3a45318f93f7bfe47e242478722cbcf"
+    "instanceId": "<N8N_INSTANCE_ID>"
   },
-  "id": "2hozCvJcPSeGPxOM",
+  "id": "<WORKFLOW_ID>",
   "tags": []
 }
