@@ -28,7 +28,7 @@ describe('GET /api/containers', () => {
 
   it('returns container list from docker service', async () => {
     const mockContainers: ContainerInfo[] = [
-      { id: 'abc123', name: 'bastion-proxy', image: 'nginx:1.29', state: 'running', status: 'Up 2 hours', ports: [], created: 1700000000 },
+      { id: 'abc123', name: 'bastion-proxy', image: 'nginx:1.29', state: 'running', status: 'Up 2 hours', ports: [], created: 1700000000, restartCount: 0, stateStartedAt: '2024-01-01T00:00:00Z' },
     ]
     vi.mocked(listContainers).mockResolvedValue(mockContainers)
 

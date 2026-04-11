@@ -11,6 +11,7 @@ import { logsRoutes } from './routes/logs.js'
 import { backupRoutes } from './routes/backup.js'
 import { automationRoutes } from './routes/automation.js'
 import { actionsRoutes } from './routes/actions.js'
+import { incidentsRoutes } from './routes/incidents.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -32,6 +33,7 @@ await app.register(logsRoutes)
 await app.register(backupRoutes)
 await app.register(automationRoutes)
 await app.register(actionsRoutes)
+await app.register(incidentsRoutes)
 
 // Serve static frontend (production only)
 const publicDir = join(__dirname, '../public')

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "docker-prune-volumes",
+    "severity": "critical",
+    "title": "Sunday cron uses --volumes on docker prune",
+    "description": "The crontab entry `0 5 * * 0 docker system prune -a -f --volumes` includes the --volumes flag, which deletes ALL unused Docker volumes. If any service container is stopped during the 04:30 auto-rebuild window, its data volume could be deleted.",
+    "remediation": "SSH to Pi: `crontab -e` → remove --volumes so the entry reads: `0 5 * * 0 docker system prune -a -f`",
+    "status": "mitigated",
+    "detectedAt": "2026-01-01"
+  },
+  {
+    "id": "b2-storage-cap",
+    "severity": "critical",
+    "title": "Backblaze B2 storage cap hit",
+    "description": "The B2 backup upload failed with HTTP 403 on 2026-01-15. No successful offsite backup has been confirmed since then. The current DR posture for INFRA and APPS cannot be trusted until capacity is verified.",
+    "remediation": "Check the Backblaze B2 console for bucket usage. Delete old backup versions or upgrade the storage cap. Re-run backup manually: `sudo /home/adrianzinko/scripts/backup.sh`",
+    "status": "mitigated",
+    "detectedAt": "2026-01-15"
+  },
+  {
+    "id": "nextcloud-data-no-offsite",
+    "severity": "warning",
+    "title": "Nextcloud file data (26 GB) has no offsite backup",
+    "description": "`INCLUDE_NEXTCLOUD_DATA_TO_B2=0` in backup.sh excludes photos and videos from B2 uploads. The 26 GB of Nextcloud files (photos, videos) are only on the local NVMe — a disk failure means permanent loss.",
+    "remediation": "Set `INCLUDE_NEXTCLOUD_DATA_TO_B2=1` in backup.sh and verify B2 storage cap has enough headroom first. Alternatively, add a separate rclone sync job targeting a cold storage bucket.",
+    "status": "active",
+    "detectedAt": "2026-01-01"
+  },
+  {
+    "id": "cert-renewal-window",
+    "severity": "warning",
+    "title": "Cert renewal runs bi-monthly — narrow buffer",
+    "description": "Certs expire in 90 days. The renewal cron runs on the 1st of every other month (bi-monthly). One missed run leaves only ~30 days of buffer before expiry, which is too tight for a manually-intervened recovery.",
+    "remediation": "Change the cron from bi-monthly (`0 4 1 */2 *`) to monthly (`0 4 1 * *`): `crontab -e` on the Pi.",
+    "status": "mitigated",
+    "detectedAt": "2026-01-01"
+  }
+]

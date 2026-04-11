@@ -11,13 +11,6 @@ interface BackupStatus {
   issues: string[]
 }
 
-const KNOWN_ISSUES = [
-  'Nextcloud file data (26 GB photos/videos) not included in B2 backup — INCLUDE_NEXTCLOUD_DATA_TO_B2=0',
-  'B2 storage cap hit on 2026-01-15 — verify bucket free space before trusting DR',
-  'Cert renewal runs bi-monthly but certs expire in 90 days — one missed run leaves ~30 day buffer',
-  'Sunday cron includes --volumes flag on docker prune — risk of volume data loss during rebuild window',
-]
-
 export async function backupRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authHook)
 
@@ -27,7 +20,7 @@ export async function backupRoutes(app: FastifyInstance) {
       lastRun: null,
       success: null,
       duration: null,
-      issues: KNOWN_ISSUES,
+      issues: [],
     }
 
     if (existsSync(logPath)) {

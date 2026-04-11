@@ -59,6 +59,8 @@ export interface Container {
   status: string
   ports: string[]
   created: number
+  restartCount: number
+  stateStartedAt: string
   url?: string
 }
 
@@ -77,10 +79,32 @@ export interface BackupStatus {
 }
 
 export interface AutomationJob {
+  id: string
   name: string
+  cron: string
   schedule: string
   description: string
   mechanism: string
   status: 'ok' | 'warning' | 'unknown'
   warning?: string
+}
+
+export interface ActionRun {
+  id: string
+  name: string
+  startedAt: string
+  finishedAt: string
+  status: 'success' | 'error'
+  output: string
+  error?: string
+}
+
+export interface Incident {
+  id: string
+  severity: 'critical' | 'warning' | 'info'
+  title: string
+  description: string
+  remediation: string
+  status: 'active' | 'mitigated'
+  detectedAt: string
 }

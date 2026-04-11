@@ -6,6 +6,7 @@ import LogsPage from './pages/LogsPage'
 import BackupPage from './pages/BackupPage'
 import AutomationPage from './pages/AutomationPage'
 import ActionsPage from './pages/ActionsPage'
+import IncidentsPage from './pages/IncidentsPage'
 import LoginPage from './pages/LoginPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -28,6 +29,7 @@ export default function App() {
                   <Route path="/backup" element={<BackupPage />} />
                   <Route path="/automation" element={<AutomationPage />} />
                   <Route path="/actions" element={<ActionsPage />} />
+                  <Route path="/incidents" element={<IncidentsPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Layout>
