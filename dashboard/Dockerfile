@@ -25,5 +25,7 @@ COPY server/package.json ./server/
 RUN npm ci -w server --omit=dev
 COPY --from=server-build /build/server/dist ./dist
 COPY --from=client-build /build/client/dist ./public
+COPY automation.config.json incidents.config.json ./
+ENV CONFIG_DIR=/app
 EXPOSE 3000
 CMD ["node", "dist/index.js"]

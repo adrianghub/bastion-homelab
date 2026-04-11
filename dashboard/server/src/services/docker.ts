@@ -11,21 +11,38 @@ export interface ContainerInfo {
   status: string
   ports: string[]
   created: number
+  restartCount: number
+  stateStartedAt: string
 }
 
 export async function listContainers(): Promise<ContainerInfo[]> {
   const containers = await docker.listContainers({ all: true })
-  return containers.map((c) => ({
-    id: c.Id,
-    name: c.Names[0]?.replace(/^\//, '') ?? c.Id.slice(0, 12),
-    image: c.Image,
-    state: c.State,
-    status: c.Status,
-    ports: c.Ports.map((p) =>
-      p.PublicPort ? `${p.PublicPort}:${p.PrivatePort}/${p.Type}` : `${p.PrivatePort}/${p.Type}`
-    ),
-    created: c.Created,
-  }))
+  return Promise.all(
+    containers.map(async (c) => {
+      let restartCount = 0
+      let stateStartedAt = new Date(c.Created * 1000).toISOString()
+      try {
+        const inspected = await docker.getContainer(c.Id).inspect()
+        restartCount = inspected.RestartCount ?? 0
+        stateStartedAt = inspected.State.StartedAt ?? stateStartedAt
+      } catch {
+        // inspect may fail for very short-lived containers; fall back to defaults
+      }
+      return {
+        id: c.Id,
+        name: c.Names[0]?.replace(/^\//, '') ?? c.Id.slice(0, 12),
+        image: c.Image,
+        state: c.State,
+        status: c.Status,
+        ports: c.Ports.map((p) =>
+          p.PublicPort ? `${p.PublicPort}:${p.PrivatePort}/${p.Type}` : `${p.PrivatePort}/${p.Type}`
+        ),
+        created: c.Created,
+        restartCount,
+        stateStartedAt,
+      }
+    })
+  )
 }
 
 export async function containerAction(id: string, action: 'start' | 'stop' | 'restart'): Promise<void> {

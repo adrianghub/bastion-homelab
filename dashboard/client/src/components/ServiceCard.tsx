@@ -29,8 +29,8 @@ function StatusDot({ state }: { state: string }) {
   )
 }
 
-function uptime(created: number): string {
-  const secs = Math.floor(Date.now() / 1000) - created
+function sinceTime(isoDate: string): string {
+  const secs = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000)
   if (secs < 60) return `${secs}s`
   if (secs < 3600) return `${Math.floor(secs / 60)}m`
   if (secs < 86400) return `${Math.floor(secs / 3600)}h`
@@ -49,6 +49,13 @@ export default function ServiceCard({ container, onRefresh }: ServiceCardProps) 
   const [confirm, setConfirm] = useState<Confirm>(null)
   const url = SERVICE_URLS[container.name]
   const isRunning = container.state === 'running'
+  const restartCount = container.restartCount ?? 0
+  const restartBadgeColor =
+    restartCount >= 3
+      ? 'var(--color-bastion-red)'
+      : restartCount > 0
+      ? 'var(--color-bastion-yellow)'
+      : null
 
   async function doAction(action: 'start' | 'stop' | 'restart') {
     setBusy(true)
@@ -94,6 +101,19 @@ export default function ServiceCard({ container, onRefresh }: ServiceCardProps) 
             >
               {container.name.replace('bastion-', '')}
             </span>
+            {restartBadgeColor && (
+              <span
+                className="shrink-0 text-xs font-mono px-1 rounded"
+                style={{
+                  background: `color-mix(in srgb, ${restartBadgeColor} 15%, transparent)`,
+                  color: restartBadgeColor,
+                  border: `1px solid color-mix(in srgb, ${restartBadgeColor} 30%, transparent)`,
+                }}
+                title={`Restarted ${restartCount} time${restartCount === 1 ? '' : 's'}`}
+              >
+                ↺{restartCount}
+              </span>
+            )}
           </div>
           {url && (
             <a
@@ -115,7 +135,7 @@ export default function ServiceCard({ container, onRefresh }: ServiceCardProps) 
             {shortImage}
           </p>
           <p className="text-xs" style={{ color: 'var(--color-bastion-muted)' }}>
-            {container.status} · {uptime(container.created)}
+            {container.status} · {sinceTime(container.stateStartedAt)}
           </p>
         </div>
 

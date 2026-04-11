@@ -1,0 +1,56 @@
+[
+  {
+    "id": "watchtower",
+    "name": "Watchtower",
+    "cron": "0 4 * * *",
+    "schedule": "Daily 04:00",
+    "description": "Auto-update registry-based container images",
+    "mechanism": "Watchtower container (--label-enable)",
+    "status": "ok"
+  },
+  {
+    "id": "custom-image-rebuild",
+    "name": "Custom image rebuild",
+    "cron": "30 4 * * *",
+    "schedule": "Daily 04:30",
+    "description": "Rebuild n8n-custom, nextcloud-custom, htop-web-custom when base images change",
+    "mechanism": "systemd bastion-custom-rebuild.timer",
+    "status": "ok"
+  },
+  {
+    "id": "backup-b2",
+    "name": "Backup → B2",
+    "cron": "0 3 1,15 * *",
+    "schedule": "1st & 15th of month, 03:00",
+    "description": "Full INFRA + APPS archive encrypted and uploaded to Backblaze B2",
+    "mechanism": "crontab → backup.sh",
+    "status": "ok"
+  },
+  {
+    "id": "cert-renewal",
+    "name": "Cert renewal",
+    "cron": "0 4 1 * *",
+    "schedule": "1st of month, 04:00",
+    "description": "Renew wildcard *.bastionreda.online via Certbot DNS-01/Cloudflare",
+    "mechanism": "crontab → certbot renew",
+    "status": "ok"
+  },
+  {
+    "id": "nextcloud-cron",
+    "name": "Nextcloud cron",
+    "cron": "*/5 * * * *",
+    "schedule": "Every 5 minutes",
+    "description": "Nextcloud background jobs (php cron.php)",
+    "mechanism": "crontab",
+    "status": "ok"
+  },
+  {
+    "id": "docker-prune",
+    "name": "Docker prune",
+    "cron": "0 5 * * 0",
+    "schedule": "Sunday 05:00",
+    "description": "docker system prune -a -f (images and containers only, no volumes)",
+    "mechanism": "crontab",
+    "status": "ok"
+  }
+]

@@ -1,0 +1,605 @@
+{
+  "name": "[Schedule] Weekly Digest Summary",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 6 * * WED"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a9e7cd6c-c38b-4db7-aebd-d571f3852d50",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/nextcloud-data/bastion-cloud/files/Blog/processed_articles.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        256,
+        0
+      ],
+      "id": "bbe3356d-4235-412f-afd0-1f56e6c83eaf",
+      "name": "Read/Write Files from Disk",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nlet processedIds = [];\n\nif (item.binary?.data?.data) {\n  try {\n    const decoded = Buffer.from(item.binary.data.data, 'base64').toString('utf8');\n    const parsed = JSON.parse(decoded);\n    if (Array.isArray(parsed?.data) && parsed.data[0]?.processedIds) {\n      processedIds = parsed.data[0].processedIds;\n    } else if (Array.isArray(parsed?.processedIds)) {\n      processedIds = parsed.processedIds;\n    }\n  } catch {\n    processedIds = [];\n  }\n}\n\nreturn [{ data: [{ processedIds }] }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        320
+      ],
+      "id": "5b896d99-f818-4155-b149-aab49579b980",
+      "name": "Extract from File",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "url": "https://rss.bastionreda.online/api/greader.php/reader/api/0/stream/items/ids?s=user/-/state/com.google/starred",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        784,
+        144
+      ],
+      "id": "fdbb4ff9-12e7-4d0f-97c0-e723f7413f2d",
+      "name": "HTTP Request",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "<CRED_FRESHRSS_API>",
+          "name": "FreshRSS API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const newArticles = $input.first().json.itemRefs || [];\n\nconst staticDataNode = $('Extract from File').all();\n\nlet processedIds = [];\n\nif (staticDataNode.length > 0 && staticDataNode[0]?.json?.data?.length > 0 && staticDataNode[0].json.data[0].processedIds) {\n  processedIds = staticDataNode[0].json.data[0].processedIds;\n}\n\nconst processedIdSet = new Set(processedIds);\n\nconst articlesToProcess = newArticles.filter(article => !processedIdSet.has(article.id));\n\nreturn articlesToProcess;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        336
+      ],
+      "id": "a99fa0cb-6d34-446d-bb69-7ecfc7a6b5b9",
+      "name": "Code1",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        16
+      ],
+      "id": "e5d915aa-cb58-45a3-8b75-6fd013d7b5be",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rss.bastionreda.online/api/greader.php/reader/api/0/stream/items/contents",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "i",
+              "value": "={{ $json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1472,
+        16
+      ],
+      "id": "8afca453-35af-4bc2-a2bd-eea43ba8fc1d",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "<CRED_FRESHRSS_API>",
+          "name": "FreshRSS API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "items",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1776,
+        16
+      ],
+      "id": "974f260c-6238-41c6-9e36-de15e464c1a2",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-flash-latest",
+          "mode": "list",
+          "cachedResultName": "models/gemini-flash-latest"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Podsumuj artykuł po polsku i angielsku. Oczekiwany JSON:\n{\n  \"pl\": { \"title\": \"...\", \"description\": \"jedno zdanie\", \"summary\": \"3-4 zdania\", \"tags\": [\"tag1\", \"tag2\"] },\n  \"en\": { \"title\": \"...\", \"description\": \"one sentence\", \"summary\": \"3-4 sentences\", \"tags\": [\"tag1\", \"tag2\"] },\n  \"original_link\": \"...\"\n}\nTagi: małe litery, po angielsku, bez polskich znaków.\n\nTytuł: {{ $('Split Out1').item.json.title }}\nLink: {{ $('Split Out1').item.json.canonical[0].href }}\nTreść:\n{{ $('Split Out1').item.json.summary.content }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        2032,
+        16
+      ],
+      "id": "89d46c09-d649-49bb-8d2b-39c10f52db53",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "<CRED_GEMINI_API>",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponses = $input.all();\nconst date = new Date().toISOString().split('T')[0];\n\nconst articles = aiResponses.map(item => {\n  const raw = item.json.content?.parts?.[0]?.text ?? item.json.text ?? item.json;\n  try {\n    return typeof raw === 'string' ? JSON.parse(raw) : raw;\n  } catch {\n    return null;\n  }\n}).filter(Boolean);\n\nconst featured = articles.slice(0, 5);\nconst extra = articles.slice(5);\n\nfunction buildBody(lang) {\n  const mainSection = featured.map(a => {\n    const l = a[lang];\n    return `## ${l.title}\\n\\n${l.summary}\\n\\n[${lang === 'pl' ? 'Oryginalny artyku\\u0142' : 'Original article'}](${a.original_link})\\n\\n---\\n\\n`;\n  }).join('');\n\n  if (extra.length === 0) return mainSection;\n\n  const extraHeading = lang === 'pl' ? '## Materia\\u0142y dodatkowe' : '## Additional materials';\n  const extraList = extra.map(a => {\n    const l = a[lang];\n    return `- [${l.title}](${a.original_link}) \\u2014 ${l.description}`;\n  }).join('\\n');\n\n  return `${mainSection}${extraHeading}\\n\\n${extraList}\\n`;\n}\n\nfunction buildFile(lang, titleStr, descStr, introStr) {\n  const tags = [...new Set(articles.flatMap(a => (a[lang]?.tags ?? [])))].slice(0, 5);\n  const tagsYaml = tags.map(t => `  - ${t}`).join('\\n');\n  const slug = `${date}-weekly-digest-${lang}`;\n  return [\n    '---',\n    `title: \"${titleStr}\"`,\n    `description: \"${descStr}\"`,\n    `date: \"${date}\"`,\n    `tags:\\n${tagsYaml}`,\n    `slug: \"${slug}\"`,\n    'featured: false',\n    'draft: true',\n    '---',\n    '',\n    introStr,\n    '',\n    '---',\n    '',\n    buildBody(lang),\n  ].join('\\n');\n}\n\nconst plFile = buildFile(\n  'pl',\n  `Tygodniowy Przegl\\u0105d - ${date}`,\n  'M\\u00f3j cotygodniowy przegl\\u0105d artyku\\u0142\\u00f3w z RSS.',\n  'Oto artyku\\u0142y, kt\\u00f3re przyku\\u0142y moj\\u0105 uwag\\u0119 w tym tygodniu. Mi\\u0142ej lektury!'\n);\n\nconst enFile = buildFile(\n  'en',\n  `Weekly Digest - ${date}`,\n  'My weekly digest of articles from RSS.',\n  'Here are the articles that caught my eye this week. Enjoy!'\n);\n\nreturn [\n  { fileName: `${date}-weekly-digest-pl.md`, fileContent: plFile },\n  { fileName: `${date}-weekly-digest-en.md`, fileContent: enFile },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2288,
+        16
+      ],
+      "id": "8bcbb666-6328-4cff-8fdf-825477d37f4e",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "fileContent",
+        "options": {
+          "fileName": "={{ $json.fileName }}"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2512,
+        16
+      ],
+      "id": "99fd4ce7-3855-48c7-bc2c-d4180d16f216",
+      "name": "Convert to File1"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/nextcloud-data/bastion-cloud/files/Blog/posts/{{ $('Code').item.json.fileName }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2736,
+        16
+      ],
+      "id": "ef2c1695-9d00-42cb-ab05-b965cded944e",
+      "name": "Read/Write Files from Disk2"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2960,
+        16
+      ],
+      "id": "b19fdbfe-6041-4cca-9a20-3823e0329d4c",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticDataNode = $('Extract from File').all();\n\nlet oldProcessedIds = [];\n\nif (staticDataNode.length > 0 && staticDataNode[0].json.data.length > 0 && staticDataNode[0].json.data[0].processedIds) {\n  oldProcessedIds = staticDataNode[0].json.data[0].processedIds;\n}\n\nconst newlyProcessedItems = $('Split Out').all();\nconst newProcessedIds = newlyProcessedItems.map(item => item.json.id);\n\nconst allProcessedIds = [...new Set([...oldProcessedIds, ...newProcessedIds])];\n\nreturn {\n  processedIds: allProcessedIds\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3184,
+        16
+      ],
+      "id": "72269c5c-6398-4681-9cec-88b4bbf36d71",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        3408,
+        16
+      ],
+      "id": "59687053-10d2-4132-9ed7-ce490b610aa2",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/nextcloud-data/bastion-cloud/files/Blog/processed_articles.json",
+        "dataPropertyName": "data",
+        "options": {
+          "append": false
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        3632,
+        16
+      ],
+      "id": "baee95a9-d126-4256-bc04-3447790a5d9f",
+      "name": "Read/Write Files from Disk1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const newIds = $('Split Out').all().map(item => ({ id: item.json.id }));\nreturn newIds;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3856,
+        16
+      ],
+      "id": "6b7871bc-3d63-41cc-9c22-e29072655fca",
+      "name": "Code: Get New IDs"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        4080,
+        16
+      ],
+      "id": "300bb591-123c-46fd-9bc7-a4547403fe41",
+      "name": "Split Out: New IDs"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rss.bastionreda.online/api/greader.php/reader/api/0/edit-tag",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "i",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "r",
+              "value": "user/-/state/com.google/starred"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4304,
+        16
+      ],
+      "id": "e90197bd-9933-4f2c-a628-d8abf4423161",
+      "name": "HTTP Request: Unstar",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "<CRED_FRESHRSS_API>",
+          "name": "FreshRSS API Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://dash.bastionreda.online/api/actions/nextcloud-scan-blog",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4528,
+        16
+      ],
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Nextcloud: Scan Blog",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "DASHBOARD_AUTH",
+          "name": "Dashboard Auth Token"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Convert to File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File1": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk2": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk1": {
+      "main": [
+        [
+          {
+            "node": "Code: Get New IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Get New IDs": {
+      "main": [
+        [
+          {
+            "node": "Split Out: New IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out: New IDs": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request: Unstar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request: Unstar": {
+      "main": [
+        [
+          {
+            "node": "Nextcloud: Scan Blog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "default"
+  },
+  "versionId": "<WORKFLOW_VERSION_ID>",
+  "meta": {
+    "instanceId": "<N8N_INSTANCE_ID>"
+  },
+  "id": "<WORKFLOW_ID>",
+  "tags": []
+}

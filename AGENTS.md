@@ -1,4 +1,4 @@
-# bastion-homelab — CLAUDE.md
+# bastion-homelab — AGENTS.md
 
 ## Project Overview
 
@@ -357,10 +357,8 @@ All vhosts follow this structure — do not deviate:
 
 ## Known Issues — Do Not Touch Without Reading
 
+- **DANGEROUS Sunday cron**: `0 5 * * 0 docker system prune -a -f --volumes` — `--volumes` flag deletes ALL unused volumes; can cause data loss if a container is stopped during the 04:30 rebuild. Remove `--volumes` from this cron entry.
+- **B2 storage cap hit**: upload failed with 403 on 2026-01-15. Verify B2 bucket free space before trusting backup DR posture.
 - **Nextcloud file data not in B2**: `INCLUDE_NEXTCLOUD_DATA_TO_B2=0` in `backup.sh` — 26GB of photos/videos have no offsite backup.
 - **Cloudflare tunnel version pinned**: `cloudflared:2025.7.0` in compose but `watchtower.enable=true`; Watchtower cannot bump pinned tags — update manually.
-
-### Resolved
-- ~~**DANGEROUS Sunday cron**: `--volumes` flag on docker prune~~ — removed 2026-04-11
-- ~~**B2 storage cap hit**~~ — resolved 2026-04-11; backup confirmed successful
-- ~~**Cert renewal frequency**: bi-monthly~~ — changed to monthly 2026-04-11
+- **Cert renewal frequency**: runs bi-monthly but certs expire in 90 days — one missed run leaves ~1 month buffer. Consider monthly.

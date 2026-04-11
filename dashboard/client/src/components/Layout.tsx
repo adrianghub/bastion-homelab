@@ -1,6 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, ScrollText, DatabaseBackup, CalendarClock, Zap, LogOut, Server } from 'lucide-react'
-import { clearToken } from '../api/client'
+import { LayoutDashboard, ScrollText, DatabaseBackup, CalendarClock, Zap, LogOut, Server, AlertTriangle } from 'lucide-react'
+import { clearToken, api } from '../api/client'
+import type { Incident } from '../api/client'
+import { usePolling } from '../hooks/usePolling'
 
 const NAV = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -8,10 +10,13 @@ const NAV = [
   { to: '/backup', icon: DatabaseBackup, label: 'Backup' },
   { to: '/automation', icon: CalendarClock, label: 'Automation' },
   { to: '/actions', icon: Zap, label: 'Actions' },
+  { to: '/incidents', icon: AlertTriangle, label: 'Incidents' },
 ]
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
+  const { data: incidents } = usePolling<Incident[]>({ fn: () => api.get('/api/incidents'), interval: 300_000 })
+  const activeIncidentCount = (incidents ?? []).filter((i) => i.status === 'active').length
 
   function handleLogout() {
     clearToken()
@@ -59,7 +64,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               })}
             >
               <Icon size={15} />
-              {label}
+              <span className="flex-1">{label}</span>
+              {label === 'Incidents' && activeIncidentCount > 0 && (
+                <span
+                  className="text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center"
+                  style={{
+                    background: 'var(--color-bastion-red)',
+                    color: '#fff',
+                    fontSize: '10px',
+                  }}
+                >
+                  {activeIncidentCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
