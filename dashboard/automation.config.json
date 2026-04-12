@@ -52,5 +52,23 @@
     "description": "docker system prune -a -f (images and containers only, no volumes)",
     "mechanism": "crontab",
     "status": "ok"
+  },
+  {
+    "id": "n8n-weekly-digest",
+    "name": "Weekly digest",
+    "cron": "0 6 * * 3",
+    "schedule": "Wednesday 06:00",
+    "description": "Summarises starred FreshRSS articles via Gemini; writes bilingual Markdown posts to Nextcloud and triggers Nextcloud blog scan",
+    "mechanism": "n8n — [Schedule] Weekly Digest Summary",
+    "status": "ok"
+  },
+  {
+    "id": "n8n-blog-webhook",
+    "name": "Blog post action",
+    "cron": "",
+    "schedule": "Webhook (on demand)",
+    "description": "Creates, edits, or deletes blog posts — reads content from Nextcloud, commits to GitHub (adrianghub/az dev branch)",
+    "mechanism": "n8n — [WEBHOOK] Trigger blog post action",
+    "status": "ok"
   }
 ]
