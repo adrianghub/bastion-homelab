@@ -18,13 +18,12 @@ export function isAuthenticated(): boolean {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken()
+  const headers: Record<string, string> = {}
+  if (options.body !== undefined) headers['Content-Type'] = 'application/json'
+  if (token) headers['Authorization'] = `Bearer ${token}`
   const res = await fetch(path, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
+    headers: { ...headers, ...(options.headers as Record<string, string> | undefined) },
   })
 
   if (res.status === 401) {

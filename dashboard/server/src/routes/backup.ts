@@ -24,7 +24,20 @@ export async function backupRoutes(app: FastifyInstance) {
     }
 
     if (existsSync(logPath)) {
-      const content = await readFile(logPath, 'utf8')
+      let content: string
+      try {
+        content = await readFile(logPath, 'utf8')
+      } catch (err: unknown) {
+        const code = (err as NodeJS.ErrnoException).code
+        return reply.send({
+          ...status,
+          issues: [
+            code === 'EISDIR'
+              ? '[log path is a directory — check host bind-mount]'
+              : '[log file not readable]',
+          ],
+        })
+      }
       const lines = content.split('\n').filter(Boolean)
 
       // Find last start and completion markers

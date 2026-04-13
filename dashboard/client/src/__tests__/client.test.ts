@@ -67,3 +67,38 @@ describe('api.get — fetch wrapper', () => {
     locationSpy.mockRestore()
   })
 })
+
+describe('api.post — Content-Type header', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.restoreAllMocks()
+  })
+
+  it('sends Content-Type: application/json when a body is provided', async () => {
+    setToken('tok')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200 })
+    )
+
+    const { api } = await import('../api/client')
+    await api.post('/api/test', { foo: 'bar' })
+
+    const [, options] = fetchSpy.mock.calls[0]
+    const headers = options?.headers as Record<string, string>
+    expect(headers['Content-Type']).toBe('application/json')
+  })
+
+  it('omits Content-Type when no body is provided (bodyless POST)', async () => {
+    setToken('tok')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200 })
+    )
+
+    const { api } = await import('../api/client')
+    await api.post('/api/test')
+
+    const [, options] = fetchSpy.mock.calls[0]
+    const headers = options?.headers as Record<string, string>
+    expect(headers['Content-Type']).toBeUndefined()
+  })
+})

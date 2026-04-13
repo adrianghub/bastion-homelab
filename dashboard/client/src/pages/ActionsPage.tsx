@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { api, type ActionRun } from '../api/client'
 import { usePolling } from '../hooks/usePolling'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { useToast } from '../components/Toast'
 import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react'
 
 const ACTION_META: Record<string, { label: string; description: string; danger?: boolean }> = {
@@ -43,6 +44,7 @@ export default function ActionsPage() {
   const [confirm, setConfirm] = useState<string | null>(null)
   const [states, setStates] = useState<Record<string, ActionState>>({})
   const [expandedRun, setExpandedRun] = useState<string | null>(null)
+  const { addToast } = useToast()
 
   const { data: history } = usePolling<ActionRun[]>({ fn: () => api.get('/api/actions/history'), interval: 30_000 })
 
@@ -51,23 +53,31 @@ export default function ActionsPage() {
   }, [])
 
   function runAction(name: string) {
+    const meta = ACTION_META[name]
     setConfirm(null)
     setStates((prev) => ({ ...prev, [name]: { running: true, result: null } }))
     api
       .post<ActionResult>(`/api/actions/${name}`)
       .then((res) => {
         setStates((prev) => ({ ...prev, [name]: { running: false, result: res } }))
+        addToast({
+          message: res.ok
+            ? `${meta?.label ?? name} completed`
+            : `${meta?.label ?? name} failed`,
+          type: res.ok ? 'success' : 'error',
+        })
         // Clear ephemeral result after 5s — history is the canonical record
         setTimeout(() => {
           setStates((prev) => ({ ...prev, [name]: { running: false, result: null } }))
         }, 5_000)
       })
-      .catch((e: Error) =>
+      .catch((e: Error) => {
         setStates((prev) => ({
           ...prev,
           [name]: { running: false, result: { ok: false, output: '', error: e.message } },
         }))
-      )
+        addToast({ message: e.message, type: 'error' })
+      })
   }
 
   const confirmMeta = confirm ? ACTION_META[confirm] : null
