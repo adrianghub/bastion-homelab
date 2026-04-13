@@ -8,15 +8,17 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('actions list renders whitelisted names', async ({ page }) => {
-  await expect(page.getByText(/renew ssl cert/i)).toBeVisible()
-  await expect(page.getByText(/rebuild n8n/i)).toBeVisible()
-  await expect(page.getByText(/docker prune/i)).toBeVisible()
+  await expect(page.getByText('Renew SSL cert')).toBeVisible()
+  // Exact match to avoid collision with the description text "rebuild n8n-custom"
+  await expect(page.getByText('Rebuild n8n', { exact: true })).toBeVisible()
+  await expect(page.getByText('Docker prune')).toBeVisible()
 })
 
 test('clicking Run shows confirm dialog', async ({ page }) => {
   const runButtons = page.getByRole('button', { name: /^run$/i })
   await runButtons.first().click()
-  await expect(page.getByRole('button', { name: /^run$/i }).last()).toBeVisible()
+  // ConfirmDialog appears — Cancel button is present
+  await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible()
 })
 
 test('confirming action shows success toast', async ({ page }) => {
@@ -24,11 +26,12 @@ test('confirming action shows success toast', async ({ page }) => {
     route.fulfill({ json: { ok: true, output: 'Certificate renewed.' } })
   )
 
-  const runButtons = page.getByRole('button', { name: /^run$/i })
-  await runButtons.first().click()
-  // Click the confirm Run in the dialog
-  await page.getByRole('button', { name: /^run$/i }).last().click()
+  // Open the confirm dialog for the first action (ssl-renew)
+  await page.getByRole('button', { name: /^run$/i }).first().click()
+  // ConfirmDialog auto-focuses confirm — press Enter
+  await page.keyboard.press('Enter')
 
+  // Toast should appear with the success message
   await expect(page.getByRole('status')).toBeVisible()
-  await expect(page.getByText(/completed/i)).toBeVisible()
+  await expect(page.getByRole('status')).toContainText('completed')
 })
