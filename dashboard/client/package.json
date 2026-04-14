@@ -8,7 +8,9 @@
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "lucide-react": "^0.523.0",
@@ -17,6 +19,7 @@
     "react-router-dom": "^7.6.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "@tailwindcss/vite": "^4.1.7",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

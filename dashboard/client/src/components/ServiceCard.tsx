@@ -3,6 +3,7 @@ import { Play, Square, RotateCcw, ExternalLink } from 'lucide-react'
 import type { Container } from '../api/client'
 import { api } from '../api/client'
 import ConfirmDialog from './ConfirmDialog'
+import { useToast } from './Toast'
 
 const SERVICE_URLS: Record<string, string> = {
   'bastion-nextcloud': 'https://cloud.bastionreda.online',
@@ -47,6 +48,7 @@ type Confirm = { action: 'stop' | 'restart' } | null
 export default function ServiceCard({ container, onRefresh }: ServiceCardProps) {
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState<Confirm>(null)
+  const { addToast } = useToast()
   const url = SERVICE_URLS[container.name]
   const isRunning = container.state === 'running'
   const restartCount = container.restartCount ?? 0
@@ -62,8 +64,10 @@ export default function ServiceCard({ container, onRefresh }: ServiceCardProps) 
     try {
       await api.post(`/api/containers/${container.id}/${action}`)
       onRefresh()
+      const label = container.name.replace('bastion-', '')
+      addToast({ message: `${label} ${action}ed`, type: 'success' })
     } catch (e) {
-      console.error(e)
+      addToast({ message: (e as Error).message, type: 'error' })
     } finally {
       setBusy(false)
     }
