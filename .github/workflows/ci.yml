@@ -85,7 +85,7 @@ jobs:
   deploy:
     name: Deploy to Pi
     runs-on: self-hosted
-    needs: [typecheck-and-test, docker-build]
+    needs: [typecheck-and-test, docker-build, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
